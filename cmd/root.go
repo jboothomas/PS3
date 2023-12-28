@@ -41,7 +41,7 @@ var (
 	//max keys per page to return from s3 API call
 	maxKeys int64 = 1000
 	//max sempahore concurrent thread counter for s3api calls
-	maxSemaphore int = 512
+	maxSemaphore int = 256
 )
 
 // rootCmd represents the base command when called without any subcommands
