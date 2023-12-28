@@ -148,7 +148,7 @@ func listObjectsV2(fBucketName string, fPrefixCount int, fEndpointUrl string, fP
 		close(chs3Object)
 		done <- true
 	}()
-	readObjects(fOutput, chs3Object, done)
+	readObjectsV2(fOutput, chs3Object, done)
 
 }
 
@@ -180,6 +180,41 @@ func readObjects(fOutput string, chs3Object <-chan *s3.Object, done <-chan bool)
 			return
 		}
 	}
+}
+
+func readObjectsV2(fOutput string, ch3Object <-chan *s3.Object, done <-chan bool) {
+        var wg sync.WaitGroup
+	numWorkers := maxSemaphore
+	var objCount int32 = 0 //int32 for atomic operations
+
+	//worker function
+	worker := func() {
+		defer wg.Done()
+		for item := range ch3Object {
+			if fDebug || fTrace {
+				atomic.AddInt32(&objCount, 1)
+				} else {
+				fmt.Printf("Object: %v \t %d \t %s\n", *item.LastModified, *item.Size, *item.Key)
+				}
+			}
+		}
+
+	//start workers
+	wg.Add(numWorkers)
+	for i := 0; i< numWorkers; i++ {
+		go worker()
+		}
+
+	//wait for done signal
+	<-done
+
+	//wait for workes to complete
+	wg.Wait()
+
+	//debug print the objectCount
+	if fDebug || fTrace {
+		fmt.Println("debug: item count=". atomic.LoadInt32(&objCount))
+		}
 }
 
 func findPrefixes(svc *s3.S3, fBucketName, prefix string, target int, chs3Object chan<- *s3.Object, wg *sync.WaitGroup, prefixes *[]string, fDebug bool) {
