@@ -53,16 +53,13 @@ func s3listObjects(svc *s3.S3, bucketName string, prefix string, startKey string
 	return resp, nil
 }
 
-func s3ListObjectsWithBackOff(svc *s3.S3, bucketName string, prefix string, startKey string, startVersion string, maxKeys int64) (*s3.ListObjectsOutput, error) {
-
-	var listSucess bool = false
-	var listobjects *s3.ListObjectsOutput
+func s3ListObjectsWithBackOff(svc *s3.S3, bucketName string, prefix string, startKey string, startVersion string, maxKeys int64) (*s3.ListObjectsV2Output, error) {
 
 	maxRetries := 10
 
 	for {
 		//Define the parameters for the listObject API call
-		params := &s3.ListObjectsInput{
+		params := &s3.ListObjectsV2Input{
 			Bucket:  aws.String(bucketName),
 			MaxKeys: aws.Int64(maxKeys),
 			//FIX REMOVE:   Delimiter: aws.String("/"),
@@ -72,16 +69,11 @@ func s3ListObjectsWithBackOff(svc *s3.S3, bucketName string, prefix string, star
 			params.Prefix = aws.String(prefix)
 		}
 
-		if startKey != "" {
-			params.Marker = aws.String(startKey)
-		}
-
 		for i := 0; ; i++ {
 			//Make the API call
-			resp, err := svc.ListObjects(params)
+			resp, err := svc.ListObjectsV2(params)
 			if err != nil {
-				listSucess = true
-				listobjects = resp
+				return resp, nil
 			}
 			if err == nil {
 				return resp, nil
@@ -104,12 +96,7 @@ func s3ListObjectsWithBackOff(svc *s3.S3, bucketName string, prefix string, star
 				}
 			}
 		}
-		if listSucess {
-			break
-		}
 	}
-	//return resp.Contents, nil --> returns a []*s3.Object
-	return listobjects, nil
 }
 
 func s3ListAllObjectsWithBackoff(svc *s3.S3, bucketName string, prefix string, startKey string, startVersion string, maxKeys int64, chs3Object chan<- *s3.Object) (int, error) {
