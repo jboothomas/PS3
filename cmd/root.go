@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	pS3Version string = "0.1.15"
+	pS3Version string = "0.1.16"
 )
 
 var (
