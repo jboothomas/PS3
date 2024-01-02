@@ -63,8 +63,8 @@ func listObjectsV2(fBucketName string, fPrefixCount int, fEndpointUrl string, fP
 		TLSInsecureSkipVerify: fNoVerifySSL,
 	})
 	if err != nil {
-		fmt.Println("Error creating custom HTTP client:", err)
-		os.Exit(1)
+		log.Fatalf("Error creating custom HTTP client: %v\n", err)
+		//os.Exit(1) called implicitly by log.Fatalf
 	}
 
 	s3Config := &aws.Config{
@@ -99,7 +99,7 @@ func listObjectsV2(fBucketName string, fPrefixCount int, fEndpointUrl string, fP
 	})
 
 	if err != nil {
-		fmt.Println("error: S3 session creation failed")
+		log.Fatalln("error: S3 session creation failed")
 	}
 
 	svc := s3.New(sess)
@@ -107,7 +107,6 @@ func listObjectsV2(fBucketName string, fPrefixCount int, fEndpointUrl string, fP
 	location, err := getBucketLocation(svc, fBucketName)
 	if err != nil {
 		DebugPrintln("Error getting location for bucket or endpoint does not have a 'region'", fBucketName, ":", err)
-		//os.Exit(1)
 	}
 
 	if location != fRegion {
@@ -128,7 +127,7 @@ func listObjectsV2(fBucketName string, fPrefixCount int, fEndpointUrl string, fP
 		SharedConfigState: session.SharedConfigEnable,
 	})
 	if err != nil {
-		fmt.Println("error: S3 session creation failed")
+		log.Fatalln("error: S3 session creation failed")
 	}
 
 	svc = s3.New(sess)
@@ -152,35 +151,6 @@ func listObjectsV2(fBucketName string, fPrefixCount int, fEndpointUrl string, fP
 
 }
 
-func readObjects(fOutput string, chs3Object <-chan *s3.Object, done <-chan bool) {
-	var wgInside sync.WaitGroup
-	var objCount int = 0
-	var mu sync.Mutex
-	for {
-		select {
-		case item, ok := <-chs3Object:
-			if ok {
-				wgInside.Add(1)
-				go func(item *s3.Object) {
-					defer wgInside.Done()
-					if !fDebug || !fTrace {
-						fmt.Printf("Object: %v \t %d \t %s\n", *item.LastModified, *item.Size, *item.Key)
-					} else {
-						mu.Lock()
-						objCount++
-						mu.Unlock()
-					}
-
-				}(item)
-			}
-		case <-done:
-			wgInside.Wait()
-			DebugPrintln("debug: item count: ", objCount)
-
-			return
-		}
-	}
-}
 
 func readObjectsV2(fOutput string, ch3Object <-chan *s3.Object, done <-chan bool) {
         var wg sync.WaitGroup
@@ -245,8 +215,8 @@ func findPrefixes(svc *s3.S3, fBucketName, prefix string, target int, chs3Object
 
 			resp, err := s3ListObjectsWithBackOff(svc, fBucketName, nextPrefix, "", "", maxKeys)
 			if err != nil {
-				fmt.Println("Error listing objects:", err)
-				return
+				log.Fatalln("Error listing objects:", err)
+				//os.Exit(1) called implicitly by log.Fatal
 			}
 
 			objectCount := len(resp.Contents)
@@ -343,7 +313,8 @@ func listObjectsInParallel(svc *s3.S3, fBucketName string, prefixes []string, ch
 			pcount = tcount
 
 			if err != nil {
-				fmt.Println("Error listing objects for prefix:", prefix, err)
+				log.Fatalln("Error listing objects for prefix:", prefix, err)
+				//os.Exit(1) called implicitly by log.Fatal
 			}
 			TracePrintln("trace: 'large' prefix", prefix, "item count: ", pcount)
 
